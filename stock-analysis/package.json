@@ -1,0 +1,37 @@
+{
+  "name": "stock-analysis-mcp",
+  "version": "1.0.0",
+  "description": "Real-time stock analysis MCP server for Scalable Capital users in Germany",
+  "main": "dist/server.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts",
+    "watch": "tsx watch src/server.ts",
+    "dashboard": "tsx src/dashboard/server.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.54.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "axios": "^1.7.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.0",
+    "node-cron": "^3.0.3",
+    "node-notifier": "^10.0.1",
+    "ws": "^8.18.0",
+    "yahoo-finance2": "^3.15.4",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.0.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/node-notifier": "^8.0.5",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "research-fetcher-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "web": "node web/server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@anthropic-ai/sdk": "^0.115.0",
+    "node-cron": "^3.0.3",
+    "axios": "^1.7.9",
+    "express": "^4.21.2",
+    "xml2js": "^0.6.2",
+    "cors": "^2.8.5"
+  }
+}

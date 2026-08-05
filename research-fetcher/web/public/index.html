@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Research Digest — Daily Tech Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Lora:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Splash screen -->
+  <div id="splash" class="splash">
+    <div class="splash-inner">
+      <div class="splash-logo"><i class="fa-solid fa-brain"></i></div>
+      <h2 class="splash-title">Research Digest</h2>
+      <p class="splash-sub">Loading your daily intelligence…</p>
+      <div class="splash-dots"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+
+  <!-- Fetch progress toast -->
+  <div id="toast" class="toast hidden">
+    <div class="toast-icon"><i class="fas fa-circle-notch fa-spin"></i></div>
+    <div class="toast-body">
+      <span id="toast-msg">Fetching papers…</span>
+      <div class="toast-bar"><div id="toast-progress" class="toast-progress"></div></div>
+    </div>
+    <button id="toast-close" class="toast-close"><i class="fas fa-times"></i></button>
+  </div>
+
+  <div id="app">
+
+    <!-- ── Top navigation ───────────────────────────────────── -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="logo"><i class="fa-solid fa-brain"></i></div>
+        <div class="brand">
+          <span class="brand-name">Research Digest</span>
+          <span class="brand-tagline">Daily Tech Intelligence</span>
+        </div>
+      </div>
+
+      <nav class="tab-nav" role="tablist">
+        <button class="tab active" data-tab="ranked" role="tab"><i class="fas fa-trophy"></i> Top Picks</button>
+        <button class="tab" data-tab="news" role="tab"><i class="fas fa-rss"></i> Intel Feed</button>
+        <button class="tab" data-tab="cited" role="tab"><i class="fas fa-quote-right"></i> Most Cited</button>
+      </nav>
+
+      <div class="topbar-right">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input id="search-input" type="text" placeholder="Search papers… (press /)" autocomplete="off">
+          <kbd class="search-kbd">/</kbd>
+          <button id="search-clear" class="search-clear hidden"><i class="fas fa-times"></i></button>
+        </div>
+        <button id="refresh-btn" class="btn-refresh" title="Fetch latest papers">
+          <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <button id="theme-btn" class="btn-icon" title="Toggle theme">
+          <i class="fas fa-moon" id="theme-icon"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- ── Digest date bar ───────────────────────────────────── -->
+    <div class="digest-bar">
+      <div class="digest-date">
+        <i class="fas fa-calendar-day"></i>
+        <span id="digest-date"></span>
+      </div>
+      <div class="digest-stats">
+        <span id="stat-ranked"><i class="fas fa-star"></i> — top picks</span>
+        <span class="dot">·</span>
+        <span id="stat-cited"><i class="fas fa-quote-right"></i> — most cited</span>
+        <span class="dot">·</span>
+        <span id="stat-updated"><i class="fas fa-clock"></i> —</span>
+      </div>
+      <div class="digest-countdown">
+        <i class="fas fa-hourglass-half"></i> <span id="countdown">—</span>
+      </div>
+    </div>
+
+    <div class="body-layout">
+
+      <!-- ── Sidebar ───────────────────────────────────────── -->
+      <aside class="sidebar">
+
+        <!-- Topic filters -->
+        <section class="side-section">
+          <h3 class="side-heading"><i class="fas fa-filter"></i> Filter by Topic</h3>
+          <div id="topic-list" class="topic-list"></div>
+        </section>
+
+        <!-- Add topic -->
+        <section class="side-section">
+          <h3 class="side-heading"><i class="fas fa-plus-circle"></i> Add Topic</h3>
+          <div class="add-topic-row">
+            <input id="new-topic-input" type="text" class="side-input" placeholder="e.g. Robotics" maxlength="32">
+            <button id="add-topic-btn" class="btn-add" title="Add and refresh"><i class="fas fa-plus"></i></button>
+          </div>
+          <div id="custom-topics" class="custom-topics"></div>
+          <p class="side-hint"><i class="fas fa-info-circle"></i> Topics are searched live on next refresh</p>
+        </section>
+
+        <!-- Sort & view -->
+        <section class="side-section">
+          <h3 class="side-heading"><i class="fas fa-sliders-h"></i> Settings</h3>
+          <label class="side-label">Sort by</label>
+          <select id="sort-select" class="side-select">
+            <option value="rank">🏆 Rank (Claude)</option>
+            <option value="score">💯 Score (highest)</option>
+            <option value="date">📅 Date (newest)</option>
+          </select>
+
+          <label class="side-label" style="margin-top:12px">Card style</label>
+          <div class="view-toggle">
+            <button class="view-btn active" data-view="digest" title="Digest view"><i class="fas fa-newspaper"></i> Digest</button>
+            <button class="view-btn" data-view="compact" title="Compact view"><i class="fas fa-list"></i> Compact</button>
+          </div>
+        </section>
+
+      </aside>
+
+      <!-- ── Main content ───────────────────────────────────── -->
+      <main class="main-content">
+
+        <!-- Tab panels -->
+        <section id="tab-ranked" class="tab-panel active">
+          <div id="search-banner" class="search-banner hidden">
+            <i class="fas fa-search"></i> Showing results for "<span id="search-query-label"></span>"
+            <button id="search-banner-clear" class="link-btn">Clear</button>
+          </div>
+          <div id="ranked-grid" class="paper-grid"></div>
+        </section>
+
+        <section id="tab-news" class="tab-panel">
+          <div class="news-header">
+            <div class="news-header-left">
+              <div class="news-header-icon"><i class="fas fa-rss"></i></div>
+              <div>
+                <h2>Intel Feed</h2>
+                <p>Blogs, company posts &amp; breakthroughs from OpenAI, Anthropic, Google, Meta, HuggingFace, LangChain, startups and top researchers — auto-updated every 5 min</p>
+              </div>
+            </div>
+            <div class="news-meta">
+              <span id="news-count" class="news-meta-pill"><i class="fas fa-newspaper"></i> — posts</span>
+              <span id="news-updated" class="news-meta-pill"><i class="fas fa-clock"></i> —</span>
+              <span id="news-next" class="news-meta-pill live"><i class="fas fa-circle"></i> Live</span>
+            </div>
+          </div>
+          <div id="news-filters" class="news-filters">
+            <button class="news-filter-btn active" data-sig="">All</button>
+            <button class="news-filter-btn" data-sig="high"><span class="sig-dot high"></span>High Impact</button>
+            <button class="news-filter-btn" data-sig="medium"><span class="sig-dot medium"></span>Medium</button>
+            <button class="news-filter-btn" data-sig="lab">Labs</button>
+            <button class="news-filter-btn" data-sig="framework">Frameworks</button>
+            <button class="news-filter-btn" data-sig="research">Research</button>
+          </div>
+          <div id="news-grid" class="news-grid"></div>
+
+          <!-- Archive section — collapsible -->
+          <div class="archive-section">
+            <button id="archive-toggle" class="archive-toggle">
+              <i class="fas fa-archive"></i>
+              <span>Older News Archive</span>
+              <span id="archive-session-count" class="archive-badge"></span>
+              <i class="fas fa-chevron-down archive-chevron" id="archive-chevron"></i>
+            </button>
+            <div id="archive-panel" class="archive-panel hidden">
+              <div class="archive-toolbar">
+                <span class="archive-hint"><i class="fas fa-info-circle"></i> Up to 90 sessions saved automatically — nothing is ever lost</span>
+                <select id="archive-session-select" class="side-select" style="width:auto;min-width:220px"></select>
+              </div>
+              <div id="archive-grid" class="news-grid"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="tab-cited" class="tab-panel">
+          <div class="section-intro">
+            <div class="section-intro-icon"><i class="fas fa-quote-right"></i></div>
+            <div>
+              <h2>Most Cited Papers</h2>
+              <p>High-impact papers ranked by citation count. Refreshed alongside your daily digest.</p>
+            </div>
+          </div>
+          <div id="cited-grid" class="paper-grid"></div>
+        </section>
+
+      </main>
+    </div>
+
+    <footer class="footer">
+      Powered by <strong>Claude Opus</strong> &nbsp;·&nbsp; Sources: arXiv · HuggingFace Daily Papers · Semantic Scholar &nbsp;·&nbsp; Refreshes every 3 hours
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

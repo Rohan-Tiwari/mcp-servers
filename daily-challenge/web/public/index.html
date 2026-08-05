@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Coding Challenge</title>
+  <style>
+    /* ── Design tokens ────────────────────────────────────────────────── */
+    :root {
+      --bg:           #0e1a12;
+      --bg2:          #121f16;
+      --surface:      #162019;
+      --surface2:     #1d2b20;
+      --surface3:     #243328;
+      --border:       #2a3d2e;
+      --border2:      #354a38;
+
+      --green-100:    #d4edda;
+      --green-300:    #6fcf8a;
+      --green-400:    #4aba68;
+      --green-500:    #2ea34a;
+      --green-600:    #1e7a35;
+      --green-glow:   rgba(46,163,74,.18);
+
+      --earth-100:    #f5e6c8;
+      --earth-300:    #c9a96e;
+      --earth-400:    #b8935a;
+      --earth-500:    #9a7443;
+      --earth-glow:   rgba(185,147,90,.12);
+
+      --accent:       #4aba68;
+      --accent2:      #6fcf8a;
+      --warm:         #c9a96e;
+      --warm2:        #e0c28a;
+
+      --text:         #e8f0e9;
+      --text2:        #b8cbb9;
+      --muted:        #6b8570;
+
+      --easy:         #4aba68;
+      --medium:       #d4a843;
+      --hard:         #d96b5a;
+
+      --radius:       14px;
+      --radius-sm:    8px;
+      --shadow:       0 8px 32px rgba(0,0,0,.5);
+      --shadow-sm:    0 2px 12px rgba(0,0,0,.35);
+    }
+
+    /* ── Reset ────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background-image:
+        radial-gradient(ellipse 80% 40% at 20% -10%, rgba(46,163,74,.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 30% at 80% 110%, rgba(185,147,90,.05) 0%, transparent 60%);
+    }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    /* ── Header ───────────────────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 1px 0 var(--border), 0 4px 20px rgba(0,0,0,.3);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -.3px;
+    }
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--green-500), var(--green-400));
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      box-shadow: 0 0 12px var(--green-glow);
+    }
+    .logo-text { color: var(--text); }
+    .logo-text span { color: var(--accent2); }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .header-pills {
+      display: flex;
+      gap: 8px;
+    }
+    .header-pill {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .pill-easy   { background: rgba(74,186,104,.12); color: var(--easy); }
+    .pill-medium { background: rgba(212,168,67,.12);  color: var(--medium); }
+    .pill-hard   { background: rgba(217,107,90,.12);  color: var(--hard); }
+    .pill-total  { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+
+    #cron-status {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .cron-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--green-glow);
+      animation: pulse-dot 2.5s ease-in-out infinite;
+    }
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+
+    /* ── Layout ───────────────────────────────────────────────────────── */
+    .layout {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 58px);
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ──────────────────────────────────────────────────────── */
+    .sidebar {
+      width: 288px;
+      min-width: 240px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 14px 12px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .search-wrap {
+      position: relative;
+    }
+    .search-wrap input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px 8px 34px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .search-wrap input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--green-glow);
+    }
+    .search-wrap input::placeholder { color: var(--muted); }
+    .search-icon {
+      position: absolute;
+      left: 10px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 14px;
+      pointer-events: none;
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 6px;
+    }
+    select {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 7px 10px;
+      color: var(--text);
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color .2s;
+      -webkit-appearance: none;
+    }
+    select:focus { border-color: var(--accent); }
+    select option { background: var(--surface2); }
+
+    .sidebar-actions {
+      display: flex;
+      gap: 6px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .btn {
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .18s;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      letter-spacing: .2px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--green-500), var(--green-400));
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(46,163,74,.3);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, var(--green-400), var(--green-300));
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(46,163,74,.4);
+    }
+    .btn-earth {
+      background: linear-gradient(135deg, var(--earth-500), var(--earth-400));
+      color: var(--earth-100);
+      box-shadow: 0 2px 10px rgba(154,116,67,.25);
+    }
+    .btn-earth:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(154,116,67,.35);
+    }
+    .btn-ghost {
+      background: var(--surface2);
+      color: var(--text2);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent2); }
+
+    .q-count {
+      padding: 7px 14px;
+      font-size: 11px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      letter-spacing: .3px;
+    }
+
+    /* ── Question list ────────────────────────────────────────────────── */
+    .question-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px;
+    }
+
+    .question-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 11px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background .14s;
+      border: 1px solid transparent;
+    }
+    .question-item:hover { background: var(--surface2); }
+    .question-item.active {
+      background: rgba(46,163,74,.1);
+      border-color: rgba(46,163,74,.25);
+    }
+    .question-item.active .q-title-text { color: var(--accent2); }
+
+    .q-num {
+      font-size: 10px;
+      color: var(--muted);
+      width: 24px;
+      text-align: right;
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .q-info { flex: 1; min-width: 0; }
+    .q-title-text {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+    }
+    .q-sub {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .diff-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .diff-dot-Easy   { background: var(--easy);   box-shadow: 0 0 5px rgba(74,186,104,.5); }
+    .diff-dot-Medium { background: var(--medium);  box-shadow: 0 0 5px rgba(212,168,67,.5); }
+    .diff-dot-Hard   { background: var(--hard);    box-shadow: 0 0 5px rgba(217,107,90,.5); }
+
+    .star-badge {
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+
+    /* ── Main pane ────────────────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* ── Home stats ───────────────────────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .stat-tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      text-align: center;
+      transition: border-color .2s, transform .2s;
+    }
+    .stat-tile:hover { border-color: var(--border2); transform: translateY(-2px); }
+    .stat-num {
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 5px;
+    }
+    .stat-label { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .5px; text-transform: uppercase; }
+    .stat-tile.total  .stat-num { color: var(--accent2); }
+    .stat-tile.easy   .stat-num { color: var(--easy); }
+    .stat-tile.medium .stat-num { color: var(--medium); }
+    .stat-tile.hard   .stat-num { color: var(--hard); }
+
+    /* ── Empty state ──────────────────────────────────────────────────── */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      text-align: center;
+    }
+    .empty-art {
+      width: 80px; height: 80px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      margin-bottom: 4px;
+    }
+    .empty-state h3 { font-size: 18px; font-weight: 700; color: var(--text); }
+    .empty-state p  { font-size: 13px; color: var(--muted); max-width: 260px; line-height: 1.6; }
+
+    /* ── Question detail ──────────────────────────────────────────────── */
+    #question-detail {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ── Card shell ───────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .card:hover { border-color: var(--border2); }
+
+    /* ── Q header ─────────────────────────────────────────────────────── */
+    .q-header {
+      padding: 22px 26px 18px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(160deg, var(--surface2) 0%, var(--surface) 100%);
+    }
+    .q-header-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .q-main-title {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -.4px;
+      color: var(--text);
+      line-height: 1.25;
+    }
+    .q-header-badges {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      letter-spacing: .4px;
+    }
+    .badge-Easy   { background: rgba(74,186,104,.15); color: var(--easy);   border: 1px solid rgba(74,186,104,.3); }
+    .badge-Medium { background: rgba(212,168,67,.15);  color: var(--medium); border: 1px solid rgba(212,168,67,.3); }
+    .badge-Hard   { background: rgba(217,107,90,.15);  color: var(--hard);   border: 1px solid rgba(217,107,90,.3); }
+    .badge-daily  { background: rgba(201,169,110,.15); color: var(--warm2);  border: 1px solid rgba(201,169,110,.3); }
+
+    .q-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .chip {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 9px;
+      border-radius: 20px;
+    }
+    .chip-cat {
+      background: rgba(46,163,74,.12);
+      color: var(--green-300);
+      border: 1px solid rgba(46,163,74,.2);
+    }
+    .chip-co {
+      background: var(--surface3);
+      color: var(--text2);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s;
+    }
+    .chip-co:hover {
+      border-color: var(--warm);
+      color: var(--warm2);
+      background: rgba(201,169,110,.1);
+    }
+    .chip-co.active-filter {
+      background: rgba(201,169,110,.18);
+      color: var(--warm2);
+      border-color: var(--warm);
+    }
+
+    /* ── Q body ───────────────────────────────────────────────────────── */
+    .q-body { padding: 22px 26px; }
+
+    .section-title {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .description {
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--text2);
+      white-space: pre-wrap;
+    }
+    .description code {
+      background: var(--surface3);
+      color: var(--warm2);
+      padding: 1px 6px;
+      border-radius: 5px;
+      font-family: "SF Mono", "Fira Code", ui-monospace, monospace;
+      font-size: 12.5px;
+      border: 1px solid var(--border);
+    }
+
+    /* ── Examples ─────────────────────────────────────────────────────── */
+    .examples-wrap { margin-top: 22px; }
+    .example-block {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green-600);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      font-family: "SF Mono", "Fira Code", ui-monospace, monospace;
+      font-size: 13px;
+    }
+    .ex-row { display: flex; gap: 10px; margin-bottom: 4px; }
+    .ex-row:last-child { margin-bottom: 0; }
+    .ex-key { color: var(--muted); min-width: 72px; flex-shrink: 0; }
+    .ex-val { color: var(--green-300); }
+    .ex-note { color: var(--muted); font-size: 12px; font-style: italic; }
+
+    /* ── Tags ─────────────────────────────────────────────────────────── */
+    .tags-wrap { margin-top: 22px; }
+    .tags-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      transition: border-color .15s, color .15s;
+    }
+    .tag:hover { border-color: var(--accent); color: var(--accent2); }
+
+    /* ── Hint panel ───────────────────────────────────────────────────── */
+    .hint-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+
+    .hint-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(90deg, rgba(201,169,110,.06) 0%, transparent 100%);
+    }
+    .hint-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--warm2);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .hint-title-icon {
+      width: 24px; height: 24px;
+      background: linear-gradient(135deg, var(--earth-500), var(--earth-400));
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+    }
+
+    .hint-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--surface2);
+      padding: 3px;
+      border-radius: var(--radius-sm);
+    }
+    .hint-tab {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 5px 13px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .18s;
+    }
+    .hint-tab:hover { color: var(--text); background: var(--surface3); }
+    .hint-tab.active {
+      background: linear-gradient(135deg, var(--earth-500), var(--earth-400));
+      color: var(--earth-100);
+      box-shadow: 0 2px 8px rgba(154,116,67,.3);
+    }
+
+    .hint-body {
+      padding: 22px;
+      min-height: 90px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .hint-idle {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 8px 0;
+    }
+    .hint-idle-icon {
+      width: 42px; height: 42px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .hint-idle p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .hint-idle strong { color: var(--warm2); }
+
+    .hint-loading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--warm);
+      border-radius: 50%;
+      animation: spin .65s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hint-text {
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--text2);
+    }
+    .cursor {
+      display: inline-block;
+      width: 2px; height: 14px;
+      background: var(--warm);
+      margin-left: 2px;
+      vertical-align: middle;
+      animation: blink .8s step-end infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    .hint-footer {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-top: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+    }
+    .claude-orb {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--warm), var(--warm2));
+      flex-shrink: 0;
+    }
+
+    /* ── Daily refresh banner ─────────────────────────────────────────── */
+    #refresh-banner {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      background: rgba(46,163,74,.1);
+      border: 1px solid rgba(46,163,74,.25);
+      border-radius: var(--radius-sm);
+      padding: 11px 16px;
+      font-size: 13px;
+      color: var(--green-300);
+      animation: slide-down .4s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes slide-down { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:none} }
+    #refresh-banner button {
+      margin-left: auto;
+      background: rgba(46,163,74,.2);
+      border: 1px solid rgba(46,163,74,.3);
+      color: var(--green-300);
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    #refresh-banner button:hover { background: rgba(46,163,74,.3); }
+
+    /* ── Toast ────────────────────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 22px; right: 22px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 11px 18px;
+      font-size: 13px;
+      color: var(--text);
+      box-shadow: var(--shadow);
+      transform: translateY(70px);
+      opacity: 0;
+      transition: all .3s cubic-bezier(.34,1.56,.64,1);
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 320px;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    /* ── Loading overlay ──────────────────────────────────────────────── */
+    #loading-overlay {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      z-index: 999;
+      transition: opacity .5s;
+    }
+    #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    .loading-ring {
+      width: 56px; height: 56px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-right-color: var(--warm);
+      border-radius: 50%;
+      animation: spin .9s linear infinite;
+    }
+    .loading-label { font-size: 13px; color: var(--muted); letter-spacing: .3px; }
+  </style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="loading-ring"></div>
+  <div class="loading-label">Loading question bank…</div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!-- ── Header ──────────────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🌿</div>
+    <div class="logo-text">Daily <span>Challenge</span></div>
+  </div>
+  <div class="header-right">
+    <div class="header-pills">
+      <span class="header-pill pill-total"><span id="h-total">—</span> total</span>
+      <span class="header-pill pill-easy"><span id="h-easy">—</span> easy</span>
+      <span class="header-pill pill-medium"><span id="h-medium">—</span> medium</span>
+      <span class="header-pill pill-hard"><span id="h-hard">—</span> hard</span>
+    </div>
+    <div id="cron-status">
+      <div class="cron-dot"></div>
+      Refreshes at 13:00
+    </div>
+  </div>
+</header>
+
+<!-- ── Body ────────────────────────────────────────────────────────────── -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="Search title, tag, category…" />
+      </div>
+      <div class="filter-row">
+        <select id="f-diff">
+          <option value="">All Levels</option>
+          <option value="Easy">Easy</option>
+          <option value="Medium">Medium</option>
+          <option value="Hard">Hard</option>
+        </select>
+        <select id="f-cat">
+          <option value="">All Topics</option>
+        </select>
+      </div>
+      <div class="filter-row">
+        <select id="f-company">
+          <option value="">All Companies</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sidebar-actions">
+      <button class="btn btn-primary" id="btn-daily" style="flex:1">⭐ Daily</button>
+      <button class="btn btn-earth" id="btn-random">🎲 Random</button>
+    </div>
+
+    <div class="q-count" id="q-count">Loading…</div>
+
+    <div class="question-list" id="question-list"></div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main" id="main">
+
+    <!-- Daily refresh banner (shown after cron fires) -->
+    <div id="refresh-banner">
+      🌿 New daily question is available!
+      <button onclick="loadDailyAndOpen()">View it →</button>
+    </div>
+
+    <!-- Stats tiles (home) -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-tile total"><div class="stat-num" id="s-total">—</div><div class="stat-label">Questions</div></div>
+      <div class="stat-tile easy"><div class="stat-num" id="s-easy">—</div><div class="stat-label">Easy</div></div>
+      <div class="stat-tile medium"><div class="stat-num" id="s-medium">—</div><div class="stat-label">Medium</div></div>
+      <div class="stat-tile hard"><div class="stat-num" id="s-hard">—</div><div class="stat-label">Hard</div></div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="empty-state">
+      <div class="empty-art">🧠</div>
+      <h3>Pick your challenge</h3>
+      <p>Choose a question from the list, open today's daily, or roll a random one.</p>
+    </div>
+
+    <!-- Question detail -->
+    <div id="question-detail">
+
+      <div class="card" id="q-card">
+        <div class="q-header">
+          <div class="q-header-top">
+            <div class="q-main-title" id="q-title">—</div>
+            <div class="q-header-badges">
+              <span class="badge" id="q-diff-badge">—</span>
+              <span class="badge badge-daily" id="q-daily-badge" style="display:none">⭐ Daily</span>
+            </div>
+          </div>
+          <div class="q-chips" id="q-chips"></div>
+        </div>
+
+        <div class="q-body">
+          <div class="section-title">Problem</div>
+          <div class="description" id="q-desc">—</div>
+
+          <div class="examples-wrap" id="q-examples"></div>
+
+          <div class="tags-wrap" id="q-tags-wrap">
+            <div class="section-title" style="margin-top:22px">Topics</div>
+            <div class="tags-grid" id="q-tags"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hint panel -->
+      <div class="hint-card">
+        <div class="hint-header">
+          <div class="hint-title">
+            <div class="hint-title-icon">✨</div>
+            Claude Hints
+          </div>
+          <div class="hint-tabs">
+            <button class="hint-tab active" data-level="gentle">Nudge</button>
+            <button class="hint-tab" data-level="approach">Approach</button>
+            <button class="hint-tab" data-level="detailed">Detailed</button>
+          </div>
+        </div>
+        <div class="hint-body" id="hint-body">
+          <div class="hint-idle">
+            <div class="hint-idle-icon">💡</div>
+            <p>Select a hint level above.<br><strong>Nudge</strong> → one-liner · <strong>Approach</strong> → no code · <strong>Detailed</strong> → with complexity</p>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /question-detail -->
+
+  </main>
+</div>
+
+<script>
+const API = ""
+let allQuestions = []
+let currentQuestion = null
+let dailyId = null
+let activeHintAbort = null
+let currentHintLevel = "gentle"
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const [questions, stats, daily, categories, companies] = await Promise.all([
+      fetch(`${API}/api/questions`).then(r => r.json()),
+      fetch(`${API}/api/stats`).then(r => r.json()),
+      fetch(`${API}/api/daily`).then(r => r.json()),
+      fetch(`${API}/api/categories`).then(r => r.json()),
+      fetch(`${API}/api/companies`).then(r => r.json()),
+    ])
+
+    allQuestions = questions.sort((a, b) => a.id - b.id)
+    dailyId = daily.id
+
+    // Populate header + stat tiles
+    const fill = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v }
+    fill("h-total",  stats.total)
+    fill("h-easy",   stats.byDifficulty.Easy)
+    fill("h-medium", stats.byDifficulty.Medium)
+    fill("h-hard",   stats.byDifficulty.Hard)
+    fill("s-total",  stats.total)
+    fill("s-easy",   stats.byDifficulty.Easy)
+    fill("s-medium", stats.byDifficulty.Medium)
+    fill("s-hard",   stats.byDifficulty.Hard)
+
+    // Category filter
+    const sel = document.getElementById("f-cat")
+    categories.forEach(c => {
+      const o = document.createElement("option")
+      o.value = c.name
+      o.textContent = `${c.name} (${c.count})`
+      sel.appendChild(o)
+    })
+
+    // Company filter
+    const csel = document.getElementById("f-company")
+    companies.forEach(c => {
+      const o = document.createElement("option")
+      o.value = c.name
+      o.textContent = `${c.name} (${c.count})`
+      csel.appendChild(o)
+    })
+
+    renderList(allQuestions)
+    setupListeners()
+    connectSSE()
+    openQuestion(daily.id)
+
+  } catch (err) {
+    showToast("⚠️ Could not reach server. Is it running on :3939?")
+  } finally {
+    const ov = document.getElementById("loading-overlay")
+    ov.classList.add("hidden")
+    setTimeout(() => ov.remove(), 600)
+  }
+}
+
+// ── SSE for daily cron refresh ────────────────────────────────────────────
+function connectSSE() {
+  const es = new EventSource(`${API}/api/events`)
+  es.onmessage = e => {
+    try {
+      const data = JSON.parse(e.data)
+      if (data.type === "daily_refresh") {
+        dailyId = data.daily.id
+        // Update active item star in list
+        renderList(getFiltered())
+        document.getElementById("refresh-banner").style.display = "flex"
+        showToast("🌿 Daily question refreshed!")
+      }
+    } catch (_) {}
+  }
+  es.onerror = () => setTimeout(connectSSE, 5000)
+}
+
+async function loadDailyAndOpen() {
+  document.getElementById("refresh-banner").style.display = "none"
+  const daily = await fetch(`${API}/api/daily`).then(r => r.json())
+  openQuestion(daily.id)
+}
+
+// ── Render question list ──────────────────────────────────────────────────
+function renderList(questions) {
+  const list = document.getElementById("question-list")
+  document.getElementById("q-count").textContent =
+    `${questions.length} question${questions.length !== 1 ? "s" : ""}`
+
+  list.innerHTML = ""
+  for (const q of questions) {
+    const div = document.createElement("div")
+    div.className = "question-item" + (currentQuestion?.id === q.id ? " active" : "")
+    div.dataset.id = q.id
+    div.innerHTML = `
+      <div class="q-num">${q.id}</div>
+      <div class="q-info">
+        <div class="q-title-text">${esc(q.title)}</div>
+        <div class="q-sub">${esc(q.category)}</div>
+      </div>
+      ${q.id === dailyId ? '<span class="star-badge">⭐</span>' : ""}
+      <div class="diff-dot diff-dot-${q.difficulty}" title="${q.difficulty}"></div>
+    `
+    div.addEventListener("click", () => openQuestion(q.id))
+    list.appendChild(div)
+  }
+}
+
+// ── Open question ─────────────────────────────────────────────────────────
+async function openQuestion(id) {
+  const q = allQuestions.find(x => x.id === id)
+             || await fetch(`${API}/api/question/${id}`).then(r => r.json())
+  currentQuestion = q
+
+  resetHint()
+
+  // Highlight sidebar
+  document.querySelectorAll(".question-item").forEach(el =>
+    el.classList.toggle("active", parseInt(el.dataset.id) === id)
+  )
+  document.querySelector(`.question-item[data-id="${id}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+
+  // Title
+  document.getElementById("q-title").textContent = q.title
+
+  // Difficulty badge
+  const db = document.getElementById("q-diff-badge")
+  db.textContent = q.difficulty
+  db.className = `badge badge-${q.difficulty}`
+
+  // Daily badge
+  const dayb = document.getElementById("q-daily-badge")
+  dayb.style.display = q.id === dailyId ? "inline-flex" : "none"
+
+  // Chips — category + company (company chips filter on click)
+  const activeCompany = document.getElementById("f-company").value
+  document.getElementById("q-chips").innerHTML =
+    `<span class="chip chip-cat">${esc(q.category)}</span>`
+    + q.companies.map(c =>
+      `<span class="chip chip-co${c === activeCompany ? " active-filter" : ""}" data-company="${esc(c)}" title="Filter by ${esc(c)}">${esc(c)}</span>`
+    ).join("")
+
+  // Wire company chip clicks
+  document.querySelectorAll(".chip-co").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const sel = document.getElementById("f-company")
+      const co = chip.dataset.company
+      sel.value = sel.value === co ? "" : co
+      sel.dispatchEvent(new Event("change"))
+      renderList(getFiltered())
+    })
+  })
+
+  // Description
+  document.getElementById("q-desc").innerHTML = renderDesc(q.description)
+
+  // Examples
+  const ex = document.getElementById("q-examples")
+  if (q.examples?.length) {
+    ex.innerHTML = `<div class="section-title" style="margin-top:22px">Examples</div>`
+      + q.examples.map(e => `
+        <div class="example-block">
+          <div class="ex-row"><span class="ex-key">Input</span><span class="ex-val">${esc(e.input)}</span></div>
+          <div class="ex-row"><span class="ex-key">Output</span><span class="ex-val">${esc(e.output)}</span></div>
+          ${e.explanation ? `<div class="ex-row"><span class="ex-note">// ${esc(e.explanation)}</span></div>` : ""}
+        </div>`).join("")
+  } else {
+    ex.innerHTML = ""
+  }
+
+  // Tags
+  document.getElementById("q-tags").innerHTML = q.tags.map(t => `<span class="tag">${esc(t)}</span>`).join("")
+
+  // Show detail, hide home
+  document.getElementById("stats-grid").style.display = "none"
+  document.getElementById("empty-state").style.display = "none"
+  document.getElementById("question-detail").style.display = "flex"
+}
+
+function renderDesc(text) {
+  return esc(text).replace(/`([^`]+)`/g, "<code>$1</code>")
+}
+
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+}
+
+// ── Hints ─────────────────────────────────────────────────────────────────
+function resetHint() {
+  if (activeHintAbort) { activeHintAbort.abort(); activeHintAbort = null }
+  const body = document.getElementById("hint-body")
+  body.innerHTML = `
+    <div class="hint-idle">
+      <div class="hint-idle-icon">💡</div>
+      <p>Select a hint level above.<br><strong>Nudge</strong> → one-liner · <strong>Approach</strong> → no code · <strong>Detailed</strong> → with complexity</p>
+    </div>`
+  document.querySelectorAll(".hint-tab").forEach(b =>
+    b.classList.toggle("active", b.dataset.level === currentHintLevel)
+  )
+}
+
+async function fetchHint(level) {
+  if (!currentQuestion) return
+  if (activeHintAbort) activeHintAbort.abort()
+  currentHintLevel = level
+
+  document.querySelectorAll(".hint-tab").forEach(b =>
+    b.classList.toggle("active", b.dataset.level === level)
+  )
+
+  const body = document.getElementById("hint-body")
+  body.innerHTML = `<div class="hint-loading"><div class="spinner"></div> Claude is thinking…</div>`
+
+  const ctrl = new AbortController()
+  activeHintAbort = ctrl
+
+  try {
+    const res = await fetch(`${API}/api/hint/${currentQuestion.id}?level=${level}`, { signal: ctrl.signal })
+    if (!res.ok) throw new Error(await res.text())
+
+    const reader = res.body.getReader()
+    const dec = new TextDecoder()
+    let text = ""
+    body.innerHTML = `
+      <div class="hint-text" id="hs"></div>
+      <div class="hint-footer"><div class="claude-orb"></div>Powered by Claude AI · ${level} hint</div>`
+    const hs = document.getElementById("hs")
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      for (const line of dec.decode(value).split("\n")) {
+        if (!line.startsWith("data: ")) continue
+        const raw = line.slice(6)
+        if (raw === "[DONE]") { hs.querySelector(".cursor")?.remove(); break }
+        try {
+          const d = JSON.parse(raw)
+          if (d.error) throw new Error(d.error)
+          if (d.text) {
+            text += d.text
+            hs.innerHTML = esc(text) + '<span class="cursor"></span>'
+          }
+        } catch (e) { if (e.name !== "SyntaxError") throw e }
+      }
+    }
+  } catch (err) {
+    if (err.name === "AbortError") return
+    body.innerHTML = `
+      <div class="hint-idle">
+        <div class="hint-idle-icon">⚠️</div>
+        <p style="color:var(--hard)">${esc(err.message)}</p>
+      </div>`
+  }
+}
+
+// ── Filters + listeners ───────────────────────────────────────────────────
+function getFiltered() {
+  const search  = document.getElementById("search-input").value.toLowerCase()
+  const diff    = document.getElementById("f-diff").value
+  const cat     = document.getElementById("f-cat").value
+  const company = document.getElementById("f-company").value
+  return allQuestions.filter(q => {
+    if (diff    && q.difficulty !== diff) return false
+    if (cat     && q.category  !== cat)  return false
+    if (company && !q.companies.includes(company)) return false
+    if (search) return (
+      q.title.toLowerCase().includes(search) ||
+      q.category.toLowerCase().includes(search) ||
+      q.tags.some(t => t.toLowerCase().includes(search)) ||
+      q.companies.some(c => c.toLowerCase().includes(search))
+    )
+    return true
+  })
+}
+
+function setupListeners() {
+  let timer
+  document.getElementById("search-input").addEventListener("input", () => {
+    clearTimeout(timer); timer = setTimeout(() => renderList(getFiltered()), 180)
+  })
+  document.getElementById("f-diff").addEventListener("change", () => renderList(getFiltered()))
+  document.getElementById("f-cat").addEventListener("change",  () => renderList(getFiltered()))
+  document.getElementById("f-company").addEventListener("change", () => {
+    renderList(getFiltered())
+    // reflect active company filter on open question's chips
+    highlightCompanyChips()
+  })
+
+  document.getElementById("btn-daily").addEventListener("click", () => {
+    if (dailyId) openQuestion(dailyId)
+  })
+  document.getElementById("btn-random").addEventListener("click", async () => {
+    const pool = getFiltered()
+    if (!pool.length) return showToast("No questions match current filters")
+    openQuestion(pool[Math.floor(Math.random() * pool.length)].id)
+  })
+
+  document.querySelectorAll(".hint-tab").forEach(btn =>
+    btn.addEventListener("click", () => fetchHint(btn.dataset.level))
+  )
+}
+
+function highlightCompanyChips() {
+  const active = document.getElementById("f-company").value
+  document.querySelectorAll(".chip-co").forEach(chip => {
+    chip.classList.toggle("active-filter", chip.dataset.company === active && active !== "")
+  })
+}
+
+function showToast(msg) {
+  const t = document.getElementById("toast")
+  t.textContent = msg
+  t.classList.add("show")
+  setTimeout(() => t.classList.remove("show"), 3200)
+}
+
+init()
+</script>
+</body>
+</html>
