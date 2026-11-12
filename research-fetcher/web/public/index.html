@@ -47,6 +47,8 @@
         <button class="tab active" data-tab="ranked" role="tab"><i class="fas fa-trophy"></i> Top Picks</button>
         <button class="tab" data-tab="news" role="tab"><i class="fas fa-rss"></i> Intel Feed</button>
         <button class="tab" data-tab="cited" role="tab"><i class="fas fa-quote-right"></i> Most Cited</button>
+        <button class="tab" data-tab="kg" role="tab"><i class="fas fa-project-diagram"></i> Knowledge Graph</button>
+        <button class="tab" data-tab="keywords" role="tab"><i class="fas fa-key"></i> Keywords</button>
       </nav>
 
       <div class="topbar-right">
@@ -108,7 +110,25 @@
         <!-- Sort & view -->
         <section class="side-section">
           <h3 class="side-heading"><i class="fas fa-sliders-h"></i> Settings</h3>
-          <label class="side-label">Sort by</label>
+
+          <label class="side-label">Quick filters</label>
+          <div class="quick-filters">
+            <button class="quick-filter active" data-topic="">All</button>
+            <button class="quick-filter enterprise" data-topic="Enterprise">
+              <i class="fas fa-building"></i> Enterprise
+            </button>
+            <button class="quick-filter" data-topic="RAG">
+              <i class="fas fa-database"></i> RAG
+            </button>
+            <button class="quick-filter" data-topic="Agents">
+              <i class="fas fa-robot"></i> Agents
+            </button>
+            <button class="quick-filter" data-topic="LLMs">
+              <i class="fas fa-brain"></i> LLMs
+            </button>
+          </div>
+
+          <label class="side-label" style="margin-top:14px">Sort by</label>
           <select id="sort-select" class="side-select">
             <option value="rank">🏆 Rank (Claude)</option>
             <option value="score">💯 Score (highest)</option>
@@ -188,6 +208,89 @@
             </div>
           </div>
           <div id="cited-grid" class="paper-grid"></div>
+        </section>
+
+        <!-- Knowledge Graph -->
+        <section id="tab-kg" class="tab-panel">
+          <div class="section-intro">
+            <div class="section-intro-icon"><i class="fas fa-project-diagram"></i></div>
+            <div>
+              <h2>Knowledge Graph</h2>
+              <p>Property graph over ranked papers. Nodes: Papers · Concepts · Results · Relevance. Edges: uses_method · introduces · produced · is_relevant_for_joule · related_to</p>
+            </div>
+          </div>
+
+          <!-- Stats row -->
+          <div id="kg-stats-row" class="kg-stats-row">
+            <div class="kg-stat-tile" id="kg-stat-papers"><span class="kg-stat-num">—</span><span class="kg-stat-label">Papers</span></div>
+            <div class="kg-stat-tile" id="kg-stat-concepts"><span class="kg-stat-num">—</span><span class="kg-stat-label">Concepts</span></div>
+            <div class="kg-stat-tile" id="kg-stat-results"><span class="kg-stat-num">—</span><span class="kg-stat-label">Results</span></div>
+            <div class="kg-stat-tile" id="kg-stat-relevance"><span class="kg-stat-num">—</span><span class="kg-stat-label">Relevance</span></div>
+            <div class="kg-stat-tile" id="kg-stat-edges"><span class="kg-stat-num">—</span><span class="kg-stat-label">Edges</span></div>
+            <button id="kg-rebuild-btn" class="btn-kg-rebuild" title="Rebuild graph from current ranked papers">
+              <i class="fas fa-sync-alt"></i> Rebuild Graph
+            </button>
+          </div>
+
+          <!-- Q&A panel -->
+          <div class="kg-qa-panel">
+            <h3 class="kg-section-title"><i class="fas fa-comments"></i> Ask the Graph</h3>
+            <div class="kg-input-row">
+              <input id="kg-question-input" type="text" class="kg-input"
+                placeholder="e.g. Which papers introduce new RAG architectures relevant for Joule?" autocomplete="off">
+              <button id="kg-ask-btn" class="btn-kg-ask"><i class="fas fa-search"></i> Ask</button>
+            </div>
+            <div id="kg-answer-area" class="kg-answer-area hidden">
+              <div id="kg-answer-text" class="kg-answer-text"></div>
+              <div id="kg-supporting-papers" class="kg-supporting-papers"></div>
+            </div>
+            <div id="kg-answer-loading" class="kg-answer-loading hidden">
+              <i class="fas fa-circle-notch fa-spin"></i> Querying graph…
+            </div>
+          </div>
+
+          <!-- Node explorer -->
+          <div class="kg-explorer">
+            <div class="kg-explorer-col">
+              <h3 class="kg-section-title"><i class="fas fa-lightbulb"></i> Concepts</h3>
+              <div id="kg-concepts-list" class="kg-node-list"></div>
+            </div>
+            <div class="kg-explorer-col">
+              <h3 class="kg-section-title"><i class="fas fa-star"></i> Joule Relevance</h3>
+              <div id="kg-relevance-list" class="kg-node-list"></div>
+            </div>
+            <div class="kg-explorer-col">
+              <h3 class="kg-section-title"><i class="fas fa-chart-bar"></i> Results</h3>
+              <div id="kg-results-list" class="kg-node-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Keywords editor -->
+        <section id="tab-keywords" class="tab-panel">
+          <div class="section-intro">
+            <div class="section-intro-icon"><i class="fas fa-key"></i></div>
+            <div>
+              <h2>Search Keywords</h2>
+              <p>Edit the keywords used to filter arXiv RSS feeds. Papers must match at least one keyword to be included. Changes take effect on the next Refresh.</p>
+            </div>
+          </div>
+          <div class="keywords-editor">
+            <div class="keywords-toolbar">
+              <span class="keywords-count"><span id="kw-count">0</span> keywords</span>
+              <div class="keywords-actions">
+                <button id="kw-add-btn" class="btn-kw-action"><i class="fas fa-plus"></i> Add keyword</button>
+                <button id="kw-save-btn" class="btn-kw-save"><i class="fas fa-save"></i> Save &amp; Apply</button>
+              </div>
+            </div>
+            <div class="kw-add-row hidden">
+              <input id="kw-new-input" type="text" class="kw-input" placeholder="e.g. agent memory" maxlength="60">
+              <button id="kw-confirm-add" class="btn-kw-action"><i class="fas fa-check"></i></button>
+              <button id="kw-cancel-add" class="btn-kw-action secondary"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="keywords-list" class="keywords-list"></div>
+            <p class="kw-hint"><i class="fas fa-info-circle"></i> Keywords use whole-word matching. Shorter, broader terms catch more papers (e.g. "RAG" vs "retrieval augmented generation").</p>
+          </div>
         </section>
 
       </main>

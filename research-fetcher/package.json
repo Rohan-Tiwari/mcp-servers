@@ -5,7 +5,17 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "web": "node web/server.js"
+    "web": "node web/server.js",
+    "agent": "node src/agent.js",
+    "agent:install": "cp com.research-fetcher.agent.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.research-fetcher.agent.plist && echo 'Agent installed and started'",
+    "agent:uninstall": "launchctl unload ~/Library/LaunchAgents/com.research-fetcher.agent.plist && rm ~/Library/LaunchAgents/com.research-fetcher.agent.plist && echo 'Agent removed'",
+    "agent:status": "launchctl list | grep research-fetcher || echo 'not loaded'",
+    "agent:logs": "tail -f ~/Library/Logs/research-agent.log",
+    "web:install": "cp com.research-fetcher.web.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.research-fetcher.web.plist && echo 'Web service installed and started at http://localhost:3737'",
+    "web:uninstall": "launchctl unload ~/Library/LaunchAgents/com.research-fetcher.web.plist && rm ~/Library/LaunchAgents/com.research-fetcher.web.plist && echo 'Web service removed'",
+    "web:logs": "tail -f ~/Library/Logs/research-web.log",
+    "install:all": "npm run agent:install && npm run web:install",
+    "status": "launchctl list | grep research-fetcher || echo 'no research-fetcher services loaded'"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

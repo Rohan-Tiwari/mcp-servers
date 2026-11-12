@@ -251,6 +251,7 @@ async function main() {
     console.error("Error checking initial papers:", error);
   }
 
+  if (!process.env.MCP_SUBPROCESS) {
   const webServer = spawn("node", ["web/server.js"], {
     cwd: path.resolve(__dirname, ".."),
     stdio: "inherit",
@@ -279,6 +280,7 @@ async function main() {
     webServer.kill();
     process.exit(0);
   });
+  } // end MCP_SUBPROCESS guard
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

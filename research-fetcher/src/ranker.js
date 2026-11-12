@@ -8,12 +8,14 @@ const MODEL = process.env.ANTHROPIC_DEFAULT_OPUS_MODEL || "claude-opus-latest"
 
 const ROHAN_CONTEXT = `The reader is Rohan Tiwari, a senior engineer at SAP building the Joule AI assistant. His work and interests:
 - AI agent harnesses and orchestration frameworks (multi-agent systems, planning, tool use)
-- LLM skills/scenarios for enterprise AI (SAP S/4HANA, SuccessFactors)
+- LLM skills/scenarios for enterprise AI (SAP S/4HANA, SuccessFactors, ERP, CRM, HR)
+- Enterprise RAG: grounding LLMs on business data, knowledge graphs, structured enterprise data
 - Distributed systems, Kubernetes, cloud-native infrastructure
 - ML infrastructure, model serving, inference optimization
-- Enterprise AI integration patterns, RAG, evaluation of agentic systems
+- Enterprise AI integration patterns — AI copilots, business process automation, conversational AI for ERP
+- Innovation for companies like SAP: AI agents for finance, supply chain, HR, procurement, analytics
 
-Rank HIGHER: agent architectures, LLM orchestration, tool use, planning, inference optimization, enterprise LLM integration, multi-agent coordination, RAG, production ML systems, distributed training, Kubernetes/cloud-native AI.
+Rank HIGHER: agent architectures, LLM orchestration, enterprise RAG, tool use, planning, inference optimization, enterprise LLM integration, multi-agent coordination, business process AI, ERP/CRM AI, AI copilots, production ML systems, Kubernetes/cloud-native AI.
 Rank LOWER: pure theory with no engineering application, unrelated domains (biology, chemistry unless AI-applied), incremental results with no bearing on building AI systems.`
 
 const CONTENT_RULES = `STRICT CONTENT RULES — read carefully:
@@ -56,12 +58,12 @@ function extractJson(text) {
 export async function rankPapers(papers, extraTopics = []) {
   if (!papers || papers.length === 0) return []
 
-  const fallback = () => papers.slice(0, 40).map((p, i) => ({
+  const fallback = () => papers.slice(0, 30).map((p, i) => ({
     ...p, rank: i + 1, rankScore: null, topicLabel: p.topic || null,
     headline: null, problem: null, solution: null, results: null, impact: null,
   }))
 
-  const candidates = papers.slice(0, 80)
+  const candidates = papers.slice(0, 50)
   const byId = new Map(candidates.map(p => [p.id, p]))
 
   const paperList = candidates.map((p, i) =>
@@ -72,18 +74,18 @@ export async function rankPapers(papers, extraTopics = []) {
     ? `\nThe user specifically added these topics — boost papers touching them: ${extraTopics.join(", ")}.`
     : ""
 
-  const topicLabels = ["AI","LLMs","Agents","Performance","Algorithms","Distributed","Kubernetes","MLInfra",...extraTopics.slice(0,5)].join(", ")
+  const topicLabels = ["AI","LLMs","Agents","RAG","Enterprise","Performance","Algorithms","Distributed","Kubernetes","MLInfra",...extraTopics.slice(0,5)].join(", ")
 
   const prompt = `${ROHAN_CONTEXT}
 ${extraLine}
 
-You have ${candidates.length} research papers. Select and rank the TOP 40 most relevant to Rohan. Rank 1 = most relevant.
+You have ${candidates.length} research papers. Select and rank the TOP 30 most relevant to Rohan. Rank 1 = most relevant.
 
 ${CONTENT_RULES}
 
 Return ONLY a raw JSON array (no prose, no markdown). Each element:
 {
-  "rank": 1-40 (unique integers),
+  "rank": 1-30 (unique integers),
   "id": exact paper ID from input,
   "rankScore": 0-100,
   "topicLabel": one of (${topicLabels}),
@@ -102,7 +104,7 @@ Return ONLY the JSON array:`
   try {
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: 16000,
+      max_tokens: 8000,
       messages: [{ role: "user", content: prompt }],
     })
 
@@ -128,7 +130,7 @@ Return ONLY the JSON array:`
     if (!ranked.length) return fallback()
 
     ranked.sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99))
-    return ranked.slice(0, 40).map((p, i) => ({ ...p, rank: i + 1 }))
+    return ranked.slice(0, 30).map((p, i) => ({ ...p, rank: i + 1 }))
 
   } catch (err) {
     console.error("[ranker] rankPapers failed:", err.message)
@@ -182,6 +184,88 @@ Return ONLY a JSON array:`
     })
   } catch (err) {
     console.error("[ranker] summariseCitedPapers failed:", err.message)
+    return papers
+  }
+}
+
+// ── Comic + SVG generator (inspired by DAS/claude-arxiv-agent) ────────────
+// Takes top N ranked papers and enriches them with comic analysis + architecture SVG.
+// Called after rankPapers() — does NOT re-rank, only enriches.
+export async function generateComics(papers) {
+  if (!papers || papers.length === 0) return papers
+  // Only generate comics for top 10 — SVG generation is expensive
+  const toEnrich = papers.slice(0, 10)
+  const rest     = papers.slice(10)
+
+  const paperList = toEnrich.map((p, i) =>
+    `${i+1}. ID: ${p.id}\nTitle: ${p.title}\nAbstract: ${(p.abstract||"").slice(0,500)}`
+  ).join("\n\n")
+
+  const prompt = `You are a research visualiser for AI engineers at SAP building Joule AI assistant.
+
+For each paper below, produce a 4-field comic analysis AND an SVG architecture diagram.
+
+Comic fields (all required — no filler text, extract from abstract):
+- problem: the specific real-world problem (1-2 sentences, plain English)
+- method: the core approach and key innovation (2-3 sentences, technical but clear)
+- result: concrete numbers/benchmark improvements if present; qualitative outcome if not (1-2 sentences)
+- takeaway: one punchy sentence an engineer should remember — what to DO differently
+- reason: one sentence on why this paper matters for building AI agent systems / enterprise LLM
+
+SVG rules (paper-figure style, inspired by NeurIPS paper figures):
+- viewBox="0 0 800 400"
+- White/light-gray background (#fafafa)
+- Clean vector modules: rounded rectangles (rx=8), arrows with marker-end
+- Colors: dark-gray primary (#1a1a1a), accent blue (#2563eb), coral (#ef4444), green (#16a34a) — pick 1-2
+- Show the method's core flow: Input → Key Module(s) → Output, 4-8 boxes max
+- Short labels only (no paragraphs in SVG text)
+- Must be self-contained valid SVG (no external refs)
+
+Return ONLY a JSON array, no prose:
+[{
+  "id": "exact paper ID",
+  "comic": {
+    "problem": "...",
+    "method": "...",
+    "result": "...",
+    "takeaway": "...",
+    "reason": "..."
+  },
+  "svg": "<svg viewBox=\\"0 0 800 400\\" ...>...</svg>"
+}]
+
+Papers:
+${paperList}`
+
+  try {
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 16000,
+      messages: [{ role: "user", content: prompt }],
+    })
+    const text = (response.content || []).filter(b => b.type === "text").map(b => b.text).join("")
+    const comics = extractJson(text)
+    const map = Object.fromEntries(comics.map(c => [c.id, c]))
+
+    const enriched = toEnrich.map(p => {
+      const c = map[p.id]
+      if (!c) return p
+      return {
+        ...p,
+        comic: {
+          problem:  cleanField(c.comic?.problem),
+          method:   cleanField(c.comic?.method),
+          result:   cleanField(c.comic?.result),
+          takeaway: cleanField(c.comic?.takeaway),
+          reason:   cleanField(c.comic?.reason),
+        },
+        svg: (typeof c.svg === "string" && c.svg.includes("<svg")) ? c.svg : null,
+      }
+    })
+
+    return [...enriched, ...rest]
+  } catch (err) {
+    console.error("[ranker] generateComics failed:", err.message)
     return papers
   }
 }

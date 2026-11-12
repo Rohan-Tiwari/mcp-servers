@@ -225,7 +225,24 @@ function digestCardHTML(p, q) {
   const rk = p.rank || "?"
   const sc = p.rankScore || 70
   const tp = paperTopic(p)
-  return `<article class="paper-card">
+  const hasComic = p.comic && (p.comic.problem || p.comic.method || p.comic.result || p.comic.takeaway)
+  const hasSvg   = typeof p.svg === "string" && p.svg.includes("<svg")
+  const cardId   = `card-${esc(p.id || Math.random().toString(36).slice(2))}`
+
+  // Comic tab content
+  const comicTab = hasComic ? `
+    <div class="comic-grid">
+      ${p.comic.problem  ? `<div class="comic-row"><div class="comic-icon ci-problem"><i class="fas fa-bomb"></i></div><div><div class="comic-label">Problem</div><div class="comic-text">${esc(p.comic.problem)}</div></div></div>` : ""}
+      ${p.comic.method   ? `<div class="comic-row"><div class="comic-icon ci-method"><i class="fas fa-lightbulb"></i></div><div><div class="comic-label">Method</div><div class="comic-text">${esc(p.comic.method)}</div></div></div>` : ""}
+      ${p.comic.result   ? `<div class="comic-row"><div class="comic-icon ci-result"><i class="fas fa-chart-bar"></i></div><div><div class="comic-label">Results</div><div class="comic-text">${esc(p.comic.result)}</div></div></div>` : ""}
+      ${p.comic.takeaway ? `<div class="comic-row"><div class="comic-icon ci-takeaway"><i class="fas fa-rocket"></i></div><div><div class="comic-label">Takeaway</div><div class="comic-text">${esc(p.comic.takeaway)}</div></div></div>` : ""}
+    </div>` : ""
+
+  const svgTab = hasSvg ? `<div class="card-svg-wrap">${p.svg}</div>` : ""
+
+  const showTabs = hasComic || hasSvg
+
+  return `<article class="paper-card" id="${cardId}">
     <div class="card-strip">
       <div class="rank-badge ${rankClass(p.rank)}">${rk}</div>
       <span class="score-pill ${scoreClass(sc)}">${sc}</span>
@@ -234,7 +251,16 @@ function digestCardHTML(p, q) {
     <div class="card-body">
       <h2 class="card-headline"><a href="${esc(p.url || "#")}" target="_blank" rel="noopener">${hl(p.headline || p.title, q)}</a></h2>
       <p class="card-authors"><i class="fas fa-users"></i>&nbsp;${hl(authorLine(p), q)}</p>
-      ${summaryBlock(p, q)}
+      ${showTabs ? `
+      <div class="card-tabs">
+        <button class="card-tab-btn active" data-card="${cardId}" data-panel="digest">Digest</button>
+        ${hasComic ? `<button class="card-tab-btn" data-card="${cardId}" data-panel="comic"><i class="fas fa-film"></i> Comic</button>` : ""}
+        ${hasSvg   ? `<button class="card-tab-btn" data-card="${cardId}" data-panel="svg"><i class="fas fa-project-diagram"></i> Diagram</button>` : ""}
+      </div>
+      <div class="card-tab-panel active" data-card="${cardId}" data-panel="digest">${summaryBlock(p, q)}</div>
+      ${hasComic ? `<div class="card-tab-panel" data-card="${cardId}" data-panel="comic">${comicTab}</div>` : ""}
+      ${hasSvg   ? `<div class="card-tab-panel" data-card="${cardId}" data-panel="svg">${svgTab}</div>` : ""}
+      ` : summaryBlock(p, q)}
     </div>
     <div class="card-foot">
       <span class="source-badge ${srcClass(p.source)}">${esc(p.source || "Unknown")}</span>
@@ -505,9 +531,24 @@ function setupControls() {
       applyFilters()
     })
   )
+
+  // Quick-filter buttons (sidebar shortcuts — sync with topic pills)
+  document.querySelectorAll(".quick-filter").forEach(btn =>
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".quick-filter").forEach(b => b.classList.remove("active"))
+      btn.classList.add("active")
+      activeTopic = btn.dataset.topic || ""
+      // Also deactivate the full topic-pill list so state is consistent
+      document.querySelectorAll(".topic-pill, .custom-pill").forEach(p => p.classList.remove("active"))
+      if (!activeTopic) document.querySelector(".topic-pill[data-topic='']")?.classList.add("active")
+      applyFilters()
+    })
+  )
 }
 
 // ── Tabs ─────────────────────────────────────────────────
+let keywordsLoaded = false
+let kgExplorerLoaded = false
 function setupTabs() {
   document.querySelectorAll(".tab").forEach(tab =>
     tab.addEventListener("click", () => {
@@ -515,6 +556,14 @@ function setupTabs() {
       document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"))
       tab.classList.add("active")
       document.getElementById(`tab-${tab.dataset.tab}`)?.classList.add("active")
+      if (tab.dataset.tab === "keywords" && !keywordsLoaded) {
+        keywordsLoaded = true
+        loadKeywordsUI()
+      }
+      if (tab.dataset.tab === "kg" && !kgExplorerLoaded) {
+        kgExplorerLoaded = true
+        loadKGGraph()
+      }
     })
   )
 }
@@ -565,16 +614,28 @@ function setupRefresh() {
     fetchSSE.onmessage = e => {
       let d
       try { d = JSON.parse(e.data) } catch { return }
+
       if ((d.type === "state" && d.running) || d.type === "progress") {
         showToast(d.message || "Fetching papers…", true)
         btn.disabled = true; btn.classList.add("spinning")
       }
+
+      // Phase 1 done — papers fetched, show them immediately (unranked)
+      if (d.type === "papers_ready") {
+        showToast(d.message || "Papers fetched — ranking with Claude Opus…", true)
+        loadRanked()   // reload grid right away with unranked snapshot
+        loadRaw()
+        loadTopics()
+      }
+
+      // Phase 2 done — ranking complete, final reload
       if (d.type === "done") {
         hideToast()
         btn.disabled = false; btn.classList.remove("spinning")
-        loadAll()
+        loadAll()      // full reload with ranked papers
         fetchSSE.close(); fetchSSE = null
       }
+
       if (d.type === "error") {
         showToast("Fetch failed — check console", false)
         setTimeout(hideToast, 4000)
@@ -852,6 +913,110 @@ function renderArchiveSession(session) {
   `).join("")
 }
 
+
+// ── Card tab switching (event delegation on ranked-grid) ─────────
+function setupCardTabs() {
+  document.getElementById("ranked-grid")?.addEventListener("click", e => {
+    const btn = e.target.closest(".card-tab-btn")
+    if (!btn) return
+    const cardId = btn.dataset.card
+    const panel  = btn.dataset.panel
+    // Toggle buttons
+    document.querySelectorAll(`.card-tab-btn[data-card="${cardId}"]`)
+      .forEach(b => b.classList.toggle("active", b.dataset.panel === panel))
+    // Toggle panels
+    document.querySelectorAll(`.card-tab-panel[data-card="${cardId}"]`)
+      .forEach(p => p.classList.toggle("active", p.dataset.panel === panel))
+  })
+}
+
+// ── Keywords editor ──────────────────────────────────────────────
+let keywords = []
+
+async function loadKeywordsUI() {
+  try {
+    const res = await fetch("/api/keywords")
+    const data = await res.json()
+    keywords = data.keywords || []
+    renderKeywords()
+  } catch { keywords = [] }
+}
+
+function renderKeywords() {
+  const list = document.getElementById("keywords-list")
+  const count = document.getElementById("kw-count")
+  if (!list) return
+  if (count) count.textContent = keywords.length
+  if (!keywords.length) {
+    list.innerHTML = `<span style="font-size:12px;color:var(--ink3);padding:4px 8px">No keywords yet — add some above</span>`
+    return
+  }
+  list.innerHTML = keywords.map((kw, i) => `
+    <span class="kw-chip">
+      ${esc(kw)}
+      <button data-idx="${i}" title="Remove keyword"><i class="fas fa-times"></i></button>
+    </span>`).join("")
+  list.querySelectorAll(".kw-chip button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      keywords.splice(parseInt(btn.dataset.idx), 1)
+      renderKeywords()
+    })
+  })
+}
+
+function setupKeywordsEditor() {
+  const addBtn    = document.getElementById("kw-add-btn")
+  const addRow    = document.querySelector(".kw-add-row")
+  const newInput  = document.getElementById("kw-new-input")
+  const confirmBtn= document.getElementById("kw-confirm-add")
+  const cancelBtn = document.getElementById("kw-cancel-add")
+  const saveBtn   = document.getElementById("kw-save-btn")
+
+  addBtn?.addEventListener("click", () => {
+    addRow?.classList.remove("hidden")
+    newInput?.focus()
+  })
+  cancelBtn?.addEventListener("click", () => {
+    addRow?.classList.add("hidden")
+    if (newInput) newInput.value = ""
+  })
+
+  function addKw() {
+    const val = newInput?.value.trim()
+    if (!val) return
+    if (!keywords.includes(val)) {
+      keywords.push(val)
+      renderKeywords()
+    }
+    if (newInput) newInput.value = ""
+    addRow?.classList.add("hidden")
+  }
+
+  confirmBtn?.addEventListener("click", addKw)
+  newInput?.addEventListener("keydown", e => { if (e.key === "Enter") addKw() })
+
+  saveBtn?.addEventListener("click", async () => {
+    if (!saveBtn) return
+    saveBtn.disabled = true
+    saveBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving…`
+    try {
+      const res = await fetch("/api/keywords", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keywords }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        saveBtn.innerHTML = `<i class="fas fa-check"></i> Saved!`
+        setTimeout(() => { saveBtn.innerHTML = `<i class="fas fa-save"></i> Save & Apply`; saveBtn.disabled = false }, 2000)
+      } else throw new Error(data.error)
+    } catch (err) {
+      saveBtn.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Error`
+      setTimeout(() => { saveBtn.innerHTML = `<i class="fas fa-save"></i> Save & Apply`; saveBtn.disabled = false }, 2000)
+    }
+  })
+}
+
 function setupArchiveToggle() {
   const toggle  = document.getElementById("archive-toggle")
   const panel   = document.getElementById("archive-panel")
@@ -872,6 +1037,199 @@ async function loadAll() {
   applyFilters()
 }
 
+// ── Knowledge Graph ──────────────────────────────────────
+
+let kgStats = null
+
+async function loadKGStats() {
+  try {
+    const data = await fetch("/api/kg/stats").then(r => r.json())
+    kgStats = data
+    renderKGStats(data)
+  } catch { /* silent */ }
+}
+
+function renderKGStats(stats) {
+  const set = (id, val) => {
+    const el = document.querySelector(`#${id} .kg-stat-num`)
+    if (el) el.textContent = val ?? "—"
+  }
+  if (!stats) return
+  set("kg-stat-papers",   stats.nodesByType?.Paper    ?? 0)
+  set("kg-stat-concepts", stats.nodesByType?.Concept  ?? 0)
+  set("kg-stat-results",  stats.nodesByType?.Result   ?? 0)
+  set("kg-stat-relevance",stats.nodesByType?.Relevance?? 0)
+  set("kg-stat-edges",    stats.totalEdges ?? 0)
+
+  const btn = document.getElementById("kg-rebuild-btn")
+  if (btn) {
+    if (stats.building) {
+      btn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> Building…`
+      btn.disabled = true
+    } else {
+      btn.innerHTML = `<i class="fas fa-sync-alt"></i> Rebuild Graph`
+      btn.disabled = false
+    }
+  }
+}
+
+async function loadKGGraph() {
+  try {
+    const data = await fetch("/api/kg/graph").then(r => r.json())
+    renderKGExplorer(data)
+  } catch { /* silent */ }
+}
+
+function renderKGExplorer(data) {
+  if (!data?.nodes) return
+
+  const concepts  = data.nodes.filter(n => n.type === "Concept")
+    .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+  const relevance = data.nodes.filter(n => n.type === "Relevance")
+    .sort((a, b) => (a.aspect || "").localeCompare(b.aspect || ""))
+  const results   = data.nodes.filter(n => n.type === "Result")
+
+  // Count how many papers each concept node is connected to
+  const conceptPaperCount = {}
+  for (const e of (data.edges || [])) {
+    if (e.type === "uses_method" || e.type === "introduces") {
+      conceptPaperCount[e.to] = (conceptPaperCount[e.to] || 0) + 1
+    }
+  }
+  const relevancePaperCount = {}
+  for (const e of (data.edges || [])) {
+    if (e.type === "is_relevant_for_joule") {
+      relevancePaperCount[e.to] = (relevancePaperCount[e.to] || 0) + 1
+    }
+  }
+
+  const renderList = (containerId, items, labelFn, countMap, edgeType) => {
+    const el = document.getElementById(containerId)
+    if (!el) return
+    if (!items.length) { el.innerHTML = `<p class="kg-empty">No nodes yet — rebuild the graph.</p>`; return }
+    el.innerHTML = items.slice(0, 40).map(n => {
+      const label = labelFn(n)
+      const count = (countMap[n.id] || 0)
+      const tag   = n.category ? `<span class="kg-cat-tag">${n.category}</span>` : ""
+      return `<div class="kg-node-item" data-query="${label}">
+        ${tag}<span class="kg-node-label">${label}</span>
+        ${count ? `<span class="kg-node-count">${count}p</span>` : ""}
+      </div>`
+    }).join("")
+    // Click a node item to pre-fill the question input
+    el.querySelectorAll(".kg-node-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const q = document.getElementById("kg-question-input")
+        if (q) { q.value = `Which papers are related to "${item.dataset.query}"?`; q.focus() }
+      })
+    })
+  }
+
+  renderList("kg-concepts-list", concepts,  n => n.name,   conceptPaperCount,  "uses_method")
+  renderList("kg-relevance-list", relevance, n => n.aspect, relevancePaperCount, "is_relevant_for_joule")
+  renderList("kg-results-list",   results,   n => n.description, {}, "produced")
+}
+
+async function askKG(question) {
+  const loading = document.getElementById("kg-answer-loading")
+  const area    = document.getElementById("kg-answer-area")
+  const text    = document.getElementById("kg-answer-text")
+  const papers  = document.getElementById("kg-supporting-papers")
+  if (!loading || !area || !text) return
+
+  area.classList.add("hidden")
+  loading.classList.remove("hidden")
+
+  try {
+    const res  = await fetch("/api/kg/query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    })
+    const data = await res.json()
+    loading.classList.add("hidden")
+
+    if (data.error) {
+      text.innerHTML = `<span class="kg-error"><i class="fas fa-exclamation-triangle"></i> ${data.error}</span>`
+    } else {
+      // Convert markdown-style bullets to HTML
+      const formatted = (data.answer || "")
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/^[-•]\s+(.+)$/gm, "<li>$1</li>")
+        .replace(/(<li>.*<\/li>)/s, "<ul>$1</ul>")
+        .replace(/\n/g, "<br>")
+      text.innerHTML = formatted
+
+      if (data.supporting?.length) {
+        papers.innerHTML = `<div class="kg-supporting-label">Supporting papers (${data.supporting.length})</div>` +
+          data.supporting.map(p =>
+            `<a class="kg-paper-chip" href="${p.url || "#"}" target="_blank" rel="noopener">
+              ${p.rank ? `<span class="kg-chip-rank">#${p.rank}</span>` : ""}
+              <span class="kg-chip-title">${p.title}</span>
+              ${p.topicLabel ? `<span class="kg-chip-topic">${p.topicLabel}</span>` : ""}
+            </a>`
+          ).join("")
+      } else {
+        papers.innerHTML = ""
+      }
+
+      if (data.subgraph) {
+        const sub = data.subgraph
+        const note = document.createElement("div")
+        note.className = "kg-subgraph-note"
+        note.textContent = `Retrieved subgraph: ${sub.nodeCount} nodes · ${sub.edgeCount} edges`
+        text.prepend(note)
+      }
+    }
+    area.classList.remove("hidden")
+  } catch (err) {
+    loading.classList.add("hidden")
+    text.innerHTML = `<span class="kg-error">Request failed: ${err.message}</span>`
+    area.classList.remove("hidden")
+  }
+}
+
+function setupKG() {
+  const rebuildBtn = document.getElementById("kg-rebuild-btn")
+  rebuildBtn?.addEventListener("click", async () => {
+    rebuildBtn.disabled = true
+    rebuildBtn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> Rebuilding…`
+    try {
+      const res = await fetch("/api/kg/rebuild", { method: "POST" })
+      const data = await res.json()
+      if (!data.success) {
+        rebuildBtn.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${data.message}`
+        setTimeout(() => { rebuildBtn.innerHTML = `<i class="fas fa-sync-alt"></i> Rebuild Graph`; rebuildBtn.disabled = false }, 3000)
+      } else {
+        // Poll stats until build completes
+        const poll = setInterval(async () => {
+          const s = await fetch("/api/kg/stats").then(r => r.json()).catch(() => null)
+          if (s && !s.building) {
+            clearInterval(poll)
+            kgStats = s
+            renderKGStats(s)
+            await loadKGGraph()
+          }
+        }, 2000)
+      }
+    } catch (err) {
+      rebuildBtn.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Error`
+      setTimeout(() => { rebuildBtn.innerHTML = `<i class="fas fa-sync-alt"></i> Rebuild Graph`; rebuildBtn.disabled = false }, 3000)
+    }
+  })
+
+  const askBtn   = document.getElementById("kg-ask-btn")
+  const inputEl  = document.getElementById("kg-question-input")
+
+  const doAsk = () => {
+    const q = inputEl?.value?.trim()
+    if (q) askKG(q)
+  }
+
+  askBtn?.addEventListener("click", doAsk)
+  inputEl?.addEventListener("keydown", e => { if (e.key === "Enter") doAsk() })
+}
+
 // ── Init ─────────────────────────────────────────────────
 async function init() {
   setupTheme()
@@ -882,14 +1240,31 @@ async function init() {
   setupRefresh()
   setupNewsFilters()
   setupArchiveToggle()
+  setupCardTabs()
+  setupKeywordsEditor()
+  setupKG()
   updateDigestDate()
 
-  await loadAll()
+  // 1. Load the essential data that fills the page above the fold
+  await Promise.allSettled([loadRanked(), loadTopics()])
+  applyFilters()
 
+  // 2. Hide splash immediately — page is usable now
   const splash = document.getElementById("splash")
   if (splash) { splash.classList.add("fade-out"); setTimeout(() => splash.style.display = "none", 500) }
 
+  // 3. Load everything else in the background without blocking
+  loadRaw().then(() => {
+    buildIndex([...rankedPapers, ...rawPapers])
+    applyFilters()
+  })
+  loadCited()
+  loadStatus()
+  loadNews()
+  loadKGStats()
+
   setInterval(() => Promise.allSettled([loadRanked(), loadCited(), loadStatus()]), 5 * 60 * 1000)
+  setInterval(loadKGStats, 30 * 1000)   // refresh KG stats every 30s (picks up background build completion)
 }
 
 document.addEventListener("DOMContentLoaded", init)

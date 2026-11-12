@@ -1,7 +1,10 @@
 import YahooFinance from "yahoo-finance2";
 import type { Quote } from "../types.js";
 
-const yf = new YahooFinance({ suppressNotices: ["yahooSurvey", "ripHistorical"] });
+const yf = new YahooFinance({
+  suppressNotices: ["yahooSurvey", "ripHistorical"],
+  logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {}, dir: () => {} },
+});
 
 export async function fetchQuote(symbol: string): Promise<Quote | null> {
   try {

@@ -49,6 +49,8 @@ export async function startDashboard(): Promise<void> {
     ws.on("close", () => wsClients.delete(ws));
   });
 
+  wss.on("error", () => { /* HTTP server error handler manages this */ });
+
   store.subscribe((snapshot) => {
     const msg = JSON.stringify({ type: "snapshot", data: snapshot });
     for (const client of wsClients) {
@@ -58,8 +60,7 @@ export async function startDashboard(): Promise<void> {
 
   server.on("error", (err: NodeJS.ErrnoException) => {
     if (err.code === "EADDRINUSE") {
-      console.log(`[dashboard] Port ${PORT} busy, retrying in 2s…`);
-      setTimeout(() => server.listen(PORT), 2000);
+      console.log(`[dashboard] Port ${PORT} already in use — dashboard likely already running at http://localhost:${PORT}`);
     } else {
       console.error("[dashboard] Server error:", err);
     }
